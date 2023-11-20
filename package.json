@@ -1,0 +1,17 @@
+{
+  "name": "apna_hisab",
+  "version": "1.0.0",
+  "description": "API for apna_hisab",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^6.3.0",
+    "mongoose": "^8.0.1",
+    "nodemon": "^3.0.1"
+  }
+}
