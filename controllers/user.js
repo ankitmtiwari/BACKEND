@@ -1,14 +1,16 @@
 const { User } = require("../models/user");
-
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 //create New Userr
 async function createUser(req, res) {
   const userData = req.body;
+  const hashedPassword = await bcrypt.hash(userData.password, 10);
   try {
     await User.create({
       firstName: userData.firstName,
       lastName: userData.lastName,
       email: userData.email,
-      password: userData.password,
+      password: hashedPassword,
       phoneNo: userData.phoneNo,
     })
       .then((usr) => {
@@ -22,6 +24,38 @@ async function createUser(req, res) {
   } catch (error) {
     res.status(400).send(error);
     console.log(`Error while creating new User ${error}`);
+  }
+}
+
+//user login
+async function login(req, res) {
+  const { username, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email: username });
+
+    if (!user) {
+      console.log(`No User Found with ${username}`);
+      return res.status(401).send("Invalid username or password");
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      console.log(`pswd is wrong ${password}`);
+      return res.status(401).send("Invalid username or password");
+    }
+
+    const token = jwt.sign(
+      { email: user.email, id: user._id },
+      "my name is lakhan",
+      {
+        expiresIn: "1h",
+      }
+    );
+    res.status(200).json({ token });
+  } catch (error) {
+    res.status(500).send(`Error during login ${error}`);
   }
 }
 
@@ -162,6 +196,7 @@ async function getAllTransactions(req, res) {
 
 module.exports = {
   createUser,
+  login,
   handleNetAmountUsers,
   getHisabOf,
   getAllHisab,
