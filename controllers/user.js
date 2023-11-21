@@ -1,6 +1,7 @@
 const { User } = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+
 //create New Userr
 async function createUser(req, res) {
   const userData = req.body;
@@ -48,9 +49,9 @@ async function login(req, res) {
 
     const token = jwt.sign(
       { email: user.email, id: user._id },
-      "my name is lakhan",
+      "my name is lakhan 1 2 ka 4 aur 4 2 ka 1",
       {
-        expiresIn: "1h",
+        expiresIn: "2h", //1s(seconds), 1m(minutes), 1h(hours), 1d(days), 1w(weeks) Other options
       }
     );
     res.status(200).json({ token });
@@ -194,6 +195,7 @@ async function getAllTransactions(req, res) {
   }
 }
 
+//
 module.exports = {
   createUser,
   login,
