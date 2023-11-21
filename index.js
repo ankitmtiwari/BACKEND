@@ -1,17 +1,23 @@
 const express = require("express");
-// const mongoose = require("mongoose");
 const app = express();
-
+//jwt
 const jwt = require("jsonwebtoken");
+//passport
 const passport = require("passport");
+//pasport local
 const LocalStrategy = require("passport-local").Strategy;
-const ExtractJwt = require("passport-jwt").ExtractJwt;
+//passport jwt
 const JwtStrategy = require("passport-jwt").Strategy;
+//to get tokn from header
+const ExtractJwt = require("passport-jwt").ExtractJwt;
+//toencrypt the password
 const bcrypt = require("bcrypt");
 
+//userModel
 const { User } = require("./models/user");
-
+//get the connected db
 const { makeMongoDbConnection } = require("./connection");
+//get user controllers
 const {
   createUser,
   login,
@@ -19,16 +25,18 @@ const {
   getAllHisab,
   getAllTransactions,
 } = require("./controllers/user");
-
+//get transaction controllers
 const {
   createTransaction,
   approveTransactionRequest,
   getTransaction,
 } = require("./controllers/transaction");
 
+//port to run
 const PORT = 8000;
+//secret key of jwt
 const key = "my name is lakhan 1 2 ka 4 aur 4 2 ka 1";
-//DB Connection
+//do the DB Connection
 makeMongoDbConnection("mongodb://127.0.0.:27017/apna_hisab");
 
 // mongoose
@@ -36,6 +44,7 @@ makeMongoDbConnection("mongodb://127.0.0.:27017/apna_hisab");
 //   .then(() => console.log("Connected to mongo DB"))
 //   .catch((err) => console.log(`Error in db connection ${err}`));
 
+//setting up common required middlewares
 app.use(passport.initialize());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -78,11 +87,9 @@ passport.use(
     }
   )
 );
-
-// passport jwt strategy for jwt token authentication
+// passport jwt auth strategy
 passport.use(
   new JwtStrategy(jwtOptions, async (payload, done) => {
-    console.log(`payloads are ${payload.email}`);
     const user = await User.findById(payload.id);
     if (user) {
       return done(null, user);
@@ -91,23 +98,30 @@ passport.use(
     }
   })
 );
+//manual jwt auth middleware
+function validLogin(req, res, next) {
+  const ctoken = req.header("Authorization");
+  if (!ctoken) {
+    return res.status(401).send("Access denied");
+  }
+  jwt.verify(ctoken, key, (err, user) => {
+    if (err) {
+      return res.status(403).send("Invalid token");
+    }
+    req.user = user;
+    next();
+  });
+}
 
 //middlewares
 const passport_local = passport.authenticate("local", { session: false });
 const passport_token = passport.authenticate("jwt", { session: false });
+// const passport_token = validLogin;
 
 //new user registration
 app.post("/signup", createUser);
 //user login
-// app.post("/login", login);
-
-//user login passport-local
-app.post("/login", passport_local, (req, res) => {
-  const token = jwt.sign({ email: req.user.email, id: req.user._id }, key, {
-    expiresIn: "2h", //1s(seconds), 1m(minutes), 1h(hours), 1d(days), 1w(weeks) Other options
-  });
-  res.send(token);
-});
+app.post("/login", passport_local, login);
 
 //new transaction with pending true
 app.post("/newTransaction", createTransaction);
@@ -124,26 +138,9 @@ app.get("/getallTransactions", getAllTransactions);
 //get transaction detail of a particular transaction
 app.get("/gettransaction", getTransaction);
 
-function validLogin(req, res, next) {
-  const ctoken = req.header("Authorization");
-  if (!ctoken) {
-    return res.status(401).send("Access denied");
-  }
-  jwt.verify(ctoken, key, (err, user) => {
-    if (err) {
-      return res.status(403).send("Invalid token");
-    }
-    req.user = user;
-    next();
-  });
-}
-
-// app.get("/protect", passport_token, (req, res) => {
-//   res.send(req.user);
-// });
-
-app.get("/protect", validLogin, (req, res) => {
-  res.send(req.user);
+//protected route that needs user to be loggedin
+app.get("/protect", passport_token, (req, res) => {
+  res.status(200).send(req.user);
 });
 
 app.listen(PORT, () => {

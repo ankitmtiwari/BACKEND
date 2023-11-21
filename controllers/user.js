@@ -1,6 +1,7 @@
 const { User } = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const key = "my name is lakhan 1 2 ka 4 aur 4 2 ka 1";
 
 //create New Userr
 async function createUser(req, res) {
@@ -29,6 +30,13 @@ async function createUser(req, res) {
 }
 
 //user login
+async function login(req, res) {
+  const token = jwt.sign({ email: req.user.email, id: req.user._id }, key, {
+    expiresIn: "2h", //1s(seconds), 1m(minutes), 1h(hours), 1d(days), 1w(weeks) Other options
+  });
+  res.status(200).send(token);
+}
+/*
 async function login(req, res) {
   const { username, password } = req.body;
 
@@ -59,6 +67,7 @@ async function login(req, res) {
     res.status(500).send(`Error during login ${error}`);
   }
 }
+*/
 
 //add net Amount for the detailsa
 async function handleNetAmountUsers(from, to, amount) {
