@@ -31,9 +31,18 @@ async function createUser(req, res) {
 
 //user login
 async function login(req, res) {
-  const token = jwt.sign({ email: req.user.email, id: req.user._id }, key, {
-    expiresIn: "2h", //1s(seconds), 1m(minutes), 1h(hours), 1d(days), 1w(weeks) Other options
-  });
+  const token = jwt.sign(
+    {
+      id: req.user._id,
+      email: req.user.email,
+      firstName: req.user.firstName,
+      lastName: req.user.lastName,
+    },
+    key,
+    {
+      expiresIn: "2h", //1s(seconds), 1m(minutes), 1h(hours), 1d(days), 1w(weeks) Other options
+    }
+  );
   res.status(200).send(token);
 }
 /*
@@ -72,8 +81,8 @@ async function login(req, res) {
 //add net Amount for the detailsa
 async function handleNetAmountUsers(from, to, amount) {
   try {
-    let sic = false;
-    //update net amount in from user
+    let sic = false; //sender insert count
+    //update net amount in from user (sender)
     const result = await User.updateOne(
       { _id: from, "netAmount.userId": to },
       { $inc: { "netAmount.$.amount": amount } }
@@ -96,7 +105,7 @@ async function handleNetAmountUsers(from, to, amount) {
       console.log("Update First");
     }
     //update net amount in to user
-    let ric = false;
+    let ric = false; //receiver insert count
     const r = await User.updateOne(
       { _id: to, "netAmount.userId": from },
       { $inc: { "netAmount.$.amount": -amount } }
@@ -136,9 +145,10 @@ async function handleNetAmountUsers(from, to, amount) {
 
 //get Hisab for a user
 async function getHisabOf(req, res) {
-  const users = req.body;
+  // const users = req.body;
+  const cuserData = req.user;
   try {
-    const loggedInUser = await User.findOne({ _id: users.currentUser });
+    const loggedInUser = await User.findOne({ _id: cuserData.id });
     if (loggedInUser) {
       // Find the netAmount for the logged-in user
       const netAmountObject = loggedInUser.netAmount.find((item) =>
@@ -151,19 +161,22 @@ async function getHisabOf(req, res) {
       return res.status(200).json({ message: "Success", hisab: netAmount });
     } else {
       // Logged-in user not found
-      throw new Error("Logged-in user not found.");
+      throw new Error("User not found.");
     }
   } catch (error) {
-    console.error("Error fetching netAmount:", error);
-    throw error;
+    res.status(400).json({ error: "Failed to get hisab", message: error });
+    // console.error("Error fetching netAmount:", error);
+    // throw error;
   }
 }
 
 //get Hisab for all users
 async function getAllHisab(req, res) {
-  const users = req.body;
+  // const users = req.body;
+  const cuserData = req.user;
+  console.log(cuserData);
   try {
-    const loggedInUser = await User.findOne({ _id: users.currentUser });
+    const loggedInUser = await User.findOne({ _id: cuserData.id });
     if (loggedInUser) {
       const netAmounts = loggedInUser.netAmount;
       return res
@@ -171,14 +184,14 @@ async function getAllHisab(req, res) {
         .json({ message: "Success", all_hisab: netAmounts });
     } else {
       // Logged-in user not found
-      throw new Error("Logged-in user not found.");
+      throw new Error("User not found.");
     }
   } catch (error) {
     // console.error  ("Error fetching netAmount:", error);
     // throw error;
     res
       .status(400)
-      .json({ error: "Failed to get All Hisab", message: error.message });
+      .json({ error: "Failed to get All Hisabs", message: error.message });
   }
 }
 

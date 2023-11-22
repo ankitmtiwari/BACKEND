@@ -27,7 +27,8 @@ const {
 } = require("./controllers/user");
 //get transaction controllers
 const {
-  createTransaction,
+  createPayTransaction,
+  createReceiveTransaction,
   approveTransactionRequest,
   getTransaction,
 } = require("./controllers/transaction");
@@ -92,7 +93,7 @@ passport.use(
   new JwtStrategy(jwtOptions, async (payload, done) => {
     const user = await User.findById(payload.id);
     if (user) {
-      return done(null, user);
+      return done(null, payload);
     } else {
       return done(null, false);
     }
@@ -122,16 +123,18 @@ const passport_token = passport.authenticate("jwt", { session: false });
 app.post("/signup", createUser);
 //user login
 app.post("/login", passport_local, login);
+// app.post("/login", validLogin, login);
 
 //new transaction with pending true
-app.post("/newTransaction", createTransaction);
+app.post("/newTransaction/pay", passport_token, createPayTransaction);
+app.post("/newTransaction/receive", passport_token, createReceiveTransaction);
 //approve the created transation
-app.patch("/approveTReq", approveTransactionRequest);
+app.patch("/approveTReq", passport_token, approveTransactionRequest);
 
 //get hisab of all buddies
-app.get("/getAllHisab", getAllHisab);
+app.get("/getAllHisab", passport_token, getAllHisab);
 //get hisab(net Amount) of a buddy
-app.get("/getHisabOf", getHisabOf);
+app.get("/getHisabOf", passport_token, getHisabOf);
 
 //get all transactions
 app.get("/getallTransactions", getAllTransactions);
