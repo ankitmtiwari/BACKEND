@@ -20,6 +20,10 @@ const transactionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    hisabDone: {
+      from: { type: Boolean, default: false },
+      to: { type: Boolean, default: false },
+    },
     description: {
       type: String,
     },

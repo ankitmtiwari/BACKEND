@@ -1,6 +1,7 @@
 const { User } = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { Transaction } = require("../models/transaction");
 const key = "my name is lakhan 1 2 ka 4 aur 4 2 ka 1";
 
 //create New Userr
@@ -78,57 +79,88 @@ async function login(req, res) {
 }
 */
 
+//update hisabFrom / hisabTo in transaction
+async function updatehisabFromToTransaction(trid, userType) {
+  if (userType === "from") {
+    const rc = await Transaction.updateOne(
+      { _id: trid },
+      {
+        $set: { "hisabDone.from": true },
+      }
+    );
+    if (rc.modifiedCount == 1) {
+      return true;
+    }
+  } else if (userType === "to") {
+    const rc = await Transaction.updateOne(
+      { _id: trid },
+      {
+        $set: { "hisabDone.to": true },
+      }
+    );
+    if (rc.modifiedCount == 1) {
+      return true;
+    }
+  }
+}
+
 //add net Amount for the detailsa
-async function handleNetAmountUsers(from, to, amount) {
+async function handleNetAmountUsers(trid, from, to, amount) {
   try {
-    let sic = false; //sender insert count
+    let sic = false; //sender insert
     //update net amount in from user (sender)
-    const result = await User.updateOne(
+    const sender_result = await User.updateOne(
       { _id: from, "netAmount.userId": to },
       { $inc: { "netAmount.$.amount": amount } }
-    ).catch((err) => {
-      console.log(`Error while updating net Amount`);
-    });
+    );
     //if not available then make a insert
-    if (result.modifiedCount == 0) {
+    if (sender_result.modifiedCount == 0) {
       await User.findByIdAndUpdate(from, {
         $push: { netAmount: { userId: to, amount: amount } },
-      })
-        .then(() => {
+      }).then(async () => {
+        const s = await updatehisabFromToTransaction(trid, "from");
+        // console.log("returned is", s);
+        if (s == true) {
           sic = true;
           console.log(`inserted the netAmount in from ${sic}`);
-        })
-        .catch((err) => {
-          console.log(`Failed to insert netAmount ${err}`);
-        });
+        } else {
+          console.log("Net Amount added but failed to make true for sender");
+        }
+      });
     } else {
-      console.log("Update First");
+      await updatehisabFromToTransaction(trid, "from");
+      // console.log("Update First");
     }
+    // console.log(`update for sender ${sender_result.modifiedCount}`);
+    // console.log(`Insert for sender ${sic}`);
     //update net amount in to user
-    let ric = false; //receiver insert count
-    const r = await User.updateOne(
+    let ric = false; //receiver insert
+    const rec_result = await User.updateOne(
       { _id: to, "netAmount.userId": from },
       { $inc: { "netAmount.$.amount": -amount } }
-    ).catch((err) => {
-      console.log(`Error while updating net Amount`);
-    });
+    );
     //if not available then make a insert
-    if (r.modifiedCount == 0) {
+    if (rec_result.modifiedCount == 0) {
       await User.findByIdAndUpdate(to, {
         $push: { netAmount: { userId: from, amount: -amount } },
-      })
-        .then(() => {
+      }).then(async () => {
+        const r = await updatehisabFromToTransaction(trid, "to");
+        console.log("returned is", r);
+        if (r == true) {
           ric = true;
-          console.log(`inserted the netAmount in to ${ric}`);
-        })
-        .catch((err) => {
-          console.log(`Failed to insert netAmount ${err}`);
-        });
+          console.log(`inserted the netAmount in from ${ric}`);
+        } else {
+          console.log("Net Amount added but failed to make true for receiver");
+        }
+      });
     } else {
-      console.log("Updated Second");
+      await updatehisabFromToTransaction(trid, "to");
+      // console.log("Updated Second");
     }
+    // console.log(`update for rec ${rec_result.modifiedCount}`);
+    // console.log(`Insert for rec ${ric}`);
     if (
-      (result.modifiedCount == 1 && r.modifiedCount == 1) ||
+      (sender_result.modifiedCount == 1 && rec_result.modifiedCount == 1) ||
       (sic == true && ric == true)
     ) {
       console.log("Update Success");
@@ -139,7 +171,8 @@ async function handleNetAmountUsers(from, to, amount) {
     }
   } catch (error) {
     // res.status(400).send(error);
-    console.error("Error performing transaction:", error);
+    // console.error("Error performing transaction:", error);
+    return error;
   }
 }
 

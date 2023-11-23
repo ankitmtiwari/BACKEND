@@ -20,6 +20,7 @@ async function addtoTransactions(tid, from, to) {
       });
   } catch (error) {
     console.log(error);
+    throw new Error("Error while adding transaction to users");
   }
 }
 //create transaction
@@ -50,8 +51,11 @@ async function createTransaction(res, transactionData) {
 //create a pay transaction
 async function createPayTransaction(req, res) {
   try {
+    //form data
     const traData = req.body;
+    //jwt auth payload data
     const cuserData = req.user;
+    //all necessary data assigning
     traData.fromUserId = cuserData.id;
     traData.toUserId = traData.buddyUserId;
     traData.createdBy = cuserData.id;
@@ -72,8 +76,11 @@ async function createPayTransaction(req, res) {
 //create a receive transaction
 async function createReceiveTransaction(req, res) {
   try {
+    //form data
     const traData = req.body;
+    //jwt auth payload data
     const cuserData = req.user;
+    //all necessary data assigning
     traData.fromUserId = traData.buddyUserId;
     traData.toUserId = cuserData.id;
     traData.createdBy = cuserData.id;
@@ -95,29 +102,77 @@ async function createReceiveTransaction(req, res) {
 async function approveTransactionRequest(req, res) {
   const data = req.body;
   const cuserData = req.user;
-  Transaction.findByIdAndUpdate(data.tid, { $set: { pending: false } })
-    .then(async (t) => {
-      if (cuserData.id === t.fromUserId || cuserData.id === t.toUserId) {
-        if (await handleNetAmountUsers(t.fromUserId, t.toUserId, t.amount)) {
-          return res.status(200).json({ message: "Approved Successfully" });
+  try {
+    const transaction = await Transaction.findById(data.tid);
+    if (transaction) {
+      if (transaction.pending == true) {
+        if (cuserData.id != transaction.createdBy.toString()) {
+          const t = await Transaction.updateOne(
+            {
+              _id: data.tid,
+              $or: [{ fromUserId: cuserData.id }, { toUserId: cuserData.id }],
+            },
+            { $set: { pending: false } }
+          );
+          if (t.modifiedCount == 1) {
+            const updated = await handleNetAmountUsers(
+              transaction._id,
+              transaction.fromUserId,
+              transaction.toUserId,
+              transaction.amount
+            );
+            if (updated == true) {
+              return res.status(200).json({ message: "Approved Successfully" });
+            } else {
+              return res.status(500).json({
+                error: updated.name,
+                message: updated.message,
+              });
+            }
+          } else {
+            return res.status(400).json({ message: "Failed to Approve" });
+          }
         } else {
-          return res.status(400).json({
-            error: "Failed to calculate netAmout",
-            message: "Transaction Approved But Failed to calculate netAmou",
-          });
+          return res
+            .status(400)
+            .json({ error: "Transaction creator cannot approve transaction" });
         }
       } else {
-        return res.status(400).json({
-          error: "Invalid User for transaction",
-          message: "You are not a part of the transaction",
+        res.status(400).json({
+          error: "Already Approved",
+          message: "Transaction is already approved",
         });
       }
-    })
-    .catch((err) => {
-      return res
-        .status(500)
-        .json({ error: err, message: "Failed to approve transaction" });
-    });
+    } else {
+      return res.status(400).json({ error: "Transaction Not Found" });
+    }
+  } catch (error) {
+    return res.status(500).json(error);
+  }
+
+  // Transaction.findByIdAndUpdate(data.tid, { $set: { pending: false } })
+  //   .then(async (t) => {
+  //     if (cuserData.id === t.fromUserId || cuserData.id === t.toUserId) {
+  //       if (await handleNetAmountUsers(t.fromUserId, t.toUserId, t.amount)) {
+  //         return res.status(200).json({ message: "Approved Successfully" });
+  //       } else {
+  //         return res.status(400).json({
+  //           error: "Failed to calculate netAmout",
+  //           message: "Transaction Approved But Failed to calculate netAmou",
+  //         });
+  //       }
+  //     } else {
+  //       return res.status(400).json({
+  //         error: "Invalid User for transaction",
+  //         message: "You are not a part of the transaction",
+  //       });
+  //     }
+  //   })
+  //   .catch((err) => {
+  //     return res
+  //       .status(500)
+  //       .json({ error: err, message: "Failed to approve transaction" });
+  //   });
 }
 
 //get details of a particular transaction
