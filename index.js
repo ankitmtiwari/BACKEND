@@ -24,13 +24,13 @@ const {
   getHisabOf,
   getAllHisab,
   getAllTransactions,
+  getTransactionof,
 } = require("./controllers/user");
 //get transaction controllers
 const {
   createPayTransaction,
   createReceiveTransaction,
   approveTransactionRequest,
-  getTransaction,
 } = require("./controllers/transaction");
 
 //port to run
@@ -137,9 +137,9 @@ app.get("/getAllHisab", passport_token, getAllHisab);
 app.get("/getHisabOf", passport_token, getHisabOf);
 
 //get all transactions
-app.get("/getallTransactions", getAllTransactions);
+app.get("/getAllTransactions", passport_token, getAllTransactions);
 //get transaction detail of a particular transaction
-app.get("/gettransaction", getTransaction);
+app.get("/getTransactionOf", passport_token, getTransactionof);
 
 //protected route that needs user to be loggedin
 app.get("/protect", passport_token, (req, res) => {

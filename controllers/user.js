@@ -178,28 +178,37 @@ async function handleNetAmountUsers(trid, from, to, amount) {
 
 //get Hisab for a user
 async function getHisabOf(req, res) {
-  // const users = req.body;
+  const users = req.body;
   const cuserData = req.user;
   try {
-    const loggedInUser = await User.findOne({ _id: cuserData.id });
-    if (loggedInUser) {
-      // Find the netAmount for the logged-in user
-      const netAmountObject = loggedInUser.netAmount.find((item) =>
-        item.userId.equals(users.buddy)
-      );
-
-      // Extract the netAmount value
-      const netAmount = netAmountObject ? netAmountObject.amount : 0;
-
-      return res.status(200).json({ message: "Success", hisab: netAmount });
+    if (cuserData.id != users.buddyUserId) {
+      const loggedInUser = await User.findOne({ _id: cuserData.id });
+      if (loggedInUser) {
+        // Find the netAmount for the logged-in user
+        const netAmountObject = loggedInUser.netAmount.find((item) =>
+          item.userId.equals(users.buddyUserId)
+        );
+        if (netAmountObject.amount) {
+          return res
+            .status(200)
+            .json({ message: "Success", hisab: netAmountObject.amount });
+        } else {
+          res.status(400).json({
+            error: "No Hisab",
+            message: "No Hisab with the requested user",
+          });
+        }
+      } else {
+        // Logged-in user not found
+        throw new Error("User not found.");
+      }
     } else {
-      // Logged-in user not found
-      throw new Error("User not found.");
+      res
+        .status(400)
+        .json({ error: "Invalid User", message: "Same user Invalid Request" });
     }
   } catch (error) {
     res.status(400).json({ error: "Failed to get hisab", message: error });
-    // console.error("Error fetching netAmount:", error);
-    // throw error;
   }
 }
 
@@ -209,7 +218,10 @@ async function getAllHisab(req, res) {
   const cuserData = req.user;
   console.log(cuserData);
   try {
-    const loggedInUser = await User.findOne({ _id: cuserData.id });
+    const loggedInUser = await User.findOne({ _id: cuserData.id }).populate({
+      path: "netAmount.userId",
+      select: "firstName lastName", // Select the fields you want to populate
+    });
     if (loggedInUser) {
       const netAmounts = loggedInUser.netAmount;
       return res
@@ -229,14 +241,62 @@ async function getAllHisab(req, res) {
 }
 
 //get all the transactions of a user
-async function getAllTransactions(req, res) {
-  const { cUser } = req.body;
+async function getTransactionof(req, res) {
+  const buddyUserId = req.body.buddyUserId;
+  const cuserData = req.user;
   try {
-    const user = await User.findOne({ _id: cUser });
+    if (buddyUserId != cuserData.id) {
+      const user = await User.findById({ _id: cuserData.id });
+      if (user) {
+        // Populate the 'transactions' field to get the actual transaction documents
+        await user.populate({
+          path: "transactions",
+          populate: {
+            path: "fromUserId toUserId createdBy",
+            select: "firstName lastName",
+          },
+        });
+        // Access the populated 'transactions' field
+        const transactions = user.transactions.filter(
+          (item) =>
+            item.fromUserId._id.equals(buddyUserId) ||
+            item.toUserId._id.equals(buddyUserId)
+        );
+        return res.status(200).send(transactions);
+      } else {
+        // User not found
+        throw new Error("User not found.");
+      }
+    } else {
+      return res.status(400).json({
+        error: "Same User not Allowed",
+        message: "Both users cannot be same",
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      error: "Failed to get transaction details",
+      message: error,
+    });
+    // console.error("Error fetching user transactions:", error);
+    // throw error;
+  }
+}
+
+//get all the transactions of a user
+async function getAllTransactions(req, res) {
+  const cuserData = req.user;
+  try {
+    const user = await User.findOne({ _id: cuserData.id });
     if (user) {
       // Populate the 'transactions' field to get the actual transaction documents
-      await user.populate("transactions");
-
+      await user.populate({
+        path: "transactions",
+        populate: {
+          path: "fromUserId toUserId createdBy",
+          select: "firstName lastName",
+        },
+      });
       // Access the populated 'transactions' field
       const transactions = user.transactions;
       return res.status(200).send(transactions);
@@ -258,4 +318,5 @@ module.exports = {
   getHisabOf,
   getAllHisab,
   getAllTransactions,
+  getTransactionof,
 };
