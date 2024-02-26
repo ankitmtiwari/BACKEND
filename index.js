@@ -13,6 +13,9 @@ const ExtractJwt = require("passport-jwt").ExtractJwt;
 //toencrypt the password
 const bcrypt = require("bcrypt");
 
+const cors = require("cors");
+
+
 //userModel
 const { User } = require("./models/user");
 //get the connected db
@@ -49,6 +52,7 @@ makeMongoDbConnection("mongodb://127.0.0.:27017/apna_hisab");
 app.use(passport.initialize());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(cors());
 
 // JWT strategy for protecting routes
 const jwtOptions = {
@@ -103,11 +107,11 @@ passport.use(
 function validLogin(req, res, next) {
   const ctoken = req.header("Authorization");
   if (!ctoken) {
-    return res.status(401).send("Access denied");
+    return res.status(401).json({ error: "Access denied Please Login" });
   }
   jwt.verify(ctoken, key, (err, user) => {
     if (err) {
-      return res.status(403).send("Invalid token");
+      return res.status(403).json({ error: "Invalid token" });
     }
     req.user = user;
     next();
@@ -116,8 +120,8 @@ function validLogin(req, res, next) {
 
 //middlewares
 const passport_local = passport.authenticate("local", { session: false });
-const passport_token = passport.authenticate("jwt", { session: false });
-// const passport_token = validLogin;
+// const passport_token = passport.authenticate("jwt", { session: false });
+const passport_token = validLogin;
 
 //new user registration
 app.post("/signup", createUser);
