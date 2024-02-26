@@ -17,15 +17,15 @@ async function createUser(req, res) {
       phoneNo: userData.phoneNo,
     })
       .then((usr) => {
-        return res.status(201).send(usr);
+        return res.status(201).json({ user: usr });
       })
       .catch((err) => {
         if (err) {
-          return res.status(400).send(err);
+          return res.status(400).json({ error: err });
         }
       });
   } catch (error) {
-    res.status(400).send(error);
+    res.status(400).json({ error: error });
     console.log(`Error while creating new User ${error}`);
   }
 }
